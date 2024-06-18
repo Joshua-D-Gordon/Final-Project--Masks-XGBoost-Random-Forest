@@ -28,13 +28,13 @@ This project extracts features from medical images, performs classification usin
    ![Feature Importance - XGBoost](feature_importance_XGBoost.png)
 
 4. **ROC Curve - Neural Network**
-   ![ROC Curve - Neural Network](roc_curve_Neural Network.png)
+   ![ROC Curve - Neural Network](roc_curve_NeuralNetwork.png)
 
 5. **ROC Curve - Random Forest**
-   ![ROC Curve - Random Forest](roc_curve_Random Forest.png)
+   ![ROC Curve - Random Forest](roc_curve_RandomForest.png)
 
 6. **ROC Curve - Stacking Model**
-   ![ROC Curve - Stacking Model](roc_curve_Stacking Model.png)
+   ![ROC Curve - Stacking Model](roc_curve_StackingModel.png)
 
 7. **ROC Curve - XGBoost**
    ![ROC Curve - XGBoost](roc_curve_XGBoost.png)
