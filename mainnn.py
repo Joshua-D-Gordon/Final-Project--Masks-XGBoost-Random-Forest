@@ -7,7 +7,7 @@ from sklearn.model_selection import train_test_split, GridSearchCV
 from xgboost import XGBClassifier
 from sklearn.ensemble import RandomForestClassifier, StackingClassifier
 from sklearn.neural_network import MLPClassifier
-from sklearn.metrics import accuracy_score, classification_report, roc_curve, auc
+from sklearn.metrics import accuracy_score, classification_report, roc_curve, auc, confusion_matrix
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.preprocessing import StandardScaler
@@ -195,7 +195,6 @@ if 'Label' in df.columns:
     print("Neural Network Accuracy:", accuracy_score(y_test, y_pred_nn))
     print("Neural Network Classification Report:\n", classification_report(y_test, y_pred_nn))
 
-    
     # Correlation heatmap
     plt.figure(figsize=(12, 8))
     sns.heatmap(df.corr(), annot=True, fmt='.2f', cmap='coolwarm')
@@ -217,18 +216,11 @@ if 'Label' in df.columns:
     plot_feature_importance(rf_best_model, 'Random_Forest')
     plot_feature_importance(xgb_best_model, 'XGBoost')
 
-    #DELETE
-    # For Neural Network, feature importance can be derived using SHAP
-    #explainer = shap.KernelExplainer(nn_best_model.predict, X_train_scaled)
-    #shap_values = explainer.shap_values(X_test_scaled)
-    #shap.summary_plot(shap_values, X_test_scaled, feature_names=X.columns)
-    #plt.savefig('shap_summary_plot_nn.png')
-    #plt.close()
-
     # ROC Curves
     def plot_roc_curve(y_test, y_pred_prob, model_name):
         fpr, tpr, _ = roc_curve(y_test, y_pred_prob)
         roc_auc = auc(fpr, tpr)
+       
         plt.figure()
         plt.plot(fpr, tpr, color='darkorange', lw=2, label='ROC curve (area = %0.2f)' % roc_auc)
         plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
@@ -268,7 +260,23 @@ if 'Label' in df.columns:
     # ROC Curve for Stacking model
     plot_roc_curve(y_test, y_pred_prob_stack, 'Stacking Model')
 
+    # Confusion Matrix for the three most important features
+    top_features = [X.columns[i] for i in np.argsort(rf_best_model.feature_importances_)[-3:]]
+    X_train_top = X_train[top_features]
+    X_test_top = X_test[top_features]
+
+    rf_top_model = RandomForestClassifier(random_state=42)
+    rf_top_model.fit(X_train_top, y_train)
+    y_pred_rf_top = rf_top_model.predict(X_test_top)
+
+    conf_matrix = confusion_matrix(y_test, y_pred_rf_top)
+    plt.figure(figsize=(10, 7))
+    sns.heatmap(conf_matrix, annot=True, fmt='d', cmap='Blues', xticklabels=['Benign', 'Malignant'], yticklabels=['Benign', 'Malignant'])
+    plt.xlabel('Predicted Label')
+    plt.ylabel('True Label')
+    plt.title('Confusion Matrix for Top 3 Features')
+    plt.savefig('confusion_matrix_top_features.png')
+    plt.close()
+
 else:
     print("Error: 'Label' column not found in the DataFrame.")
-
-
