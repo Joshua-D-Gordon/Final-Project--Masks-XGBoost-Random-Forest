@@ -36,40 +36,60 @@ def extract_features(mask):
         major_axis_length = max(axes)
         minor_axis_length = min(axes)
     else:
-        major_axis_length = minor_axis_length = 0
+        # no 5 points to fit an eclipse
+        return None
+    
+    #aviod divide by zeros error and remove instance from data
+    if minor_axis_length == 0:
+        return None
     
     features['Major Axis Length'] = major_axis_length
     features['Minor Axis Length'] = minor_axis_length
     
     # Aspect Ratio
-    aspect_ratio = major_axis_length / minor_axis_length if minor_axis_length != 0 else 0
+    aspect_ratio = major_axis_length / minor_axis_length
     features['Aspect Ratio'] = aspect_ratio
-    #check how many errors
+    
+
     # Circularity
-    circularity = 4 * np.pi * (area / (perimeter ** 2)) if perimeter != 0 else 0
+    if perimeter != 0:
+        circularity = 4 * np.pi * (area / (perimeter ** 2))
+    else:
+        #skip instance
+        return None
     features['Circularity'] = circularity
     
     # Compactness
-    compactness = (perimeter ** 2) / (4 * np.pi * area) if area != 0 else 0
+    if area != 0:
+        compactness = (perimeter ** 2) / (4 * np.pi * area)
+    else:
+        #skip image to avoid divide by zero
+        return None
     features['Compactness'] = compactness
     
     # Eccentricity
-    eccentricity = major_axis_length / minor_axis_length if minor_axis_length != 0 else 0
+    eccentricity = major_axis_length / minor_axis_length
     features['Eccentricity'] = eccentricity
     
     # Jaggedness (Boundary Roughness)
     smoothed_contour = cv2.approxPolyDP(contours[0], epsilon=0.02*perimeter, closed=True)
     smoothed_perimeter = cv2.arcLength(smoothed_contour, True)
-    jaggedness = perimeter / smoothed_perimeter if smoothed_perimeter != 0 else 0
+    if smoothed_perimeter != 0:
+        jaggedness = perimeter / smoothed_perimeter
+    else:
+        #skip image to avoid divide by zero
+        return None
     features['Jaggedness'] = jaggedness
     
     # Convex Hull Area
     hull = cv2.convexHull(contours[0])
     hull_area = cv2.contourArea(hull)
-    features['Convex Hull Area'] = hull_area
+    if hull_area != 0:
+        solidity = area / hull_area
+    else:
+        return None  # Skip this image to avoid divide-by-zero
     
-    # Solidity
-    solidity = area / hull_area if hull_area != 0 else 0
+    features['Convex Hull Area'] = hull_area
     features['Solidity'] = solidity
     
     return features
@@ -82,8 +102,9 @@ def extract_features_from_all_masks(masks_path):
         if mask_file.endswith('.png'):
             mask_image = cv2.imread(os.path.join(masks_path, mask_file), cv2.IMREAD_GRAYSCALE)
             features = extract_features(mask_image)
-            features_list.append(features)
-            filenames.append(mask_file)
+            if features is not None:
+                features_list.append(features)
+                filenames.append(mask_file)
     
     return features_list, filenames
 
