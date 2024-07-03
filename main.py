@@ -10,6 +10,9 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, classification_report
 import matplotlib.pyplot as plt
 
+#TODO confusion matrix on all features, make sure numbers match = 2971.
+#AUC 
+
 # Define paths
 masks_path = 'masks'
 meta_path = 'meta'
@@ -41,7 +44,7 @@ def extract_features(mask):
     # Aspect Ratio
     aspect_ratio = major_axis_length / minor_axis_length if minor_axis_length != 0 else 0
     features['Aspect Ratio'] = aspect_ratio
-    
+    #check how many errors
     # Circularity
     circularity = 4 * np.pi * (area / (perimeter ** 2)) if perimeter != 0 else 0
     features['Circularity'] = circularity
