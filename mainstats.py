@@ -314,32 +314,38 @@ if 'Label' in df.columns:
             features_df = pd.DataFrame(scaler.transform(features_df), columns=features_df.columns)
         return features_df
 
-    def plot_image_features_with_predictions_and_contributions(filename, features, xgb_pred, rf_pred, rf_contributions):
+    def plot_image_features_with_predictions_and_contributions(filename, features, xgb_pred, rf_pred, rf_contributions, output_dir):
+        label_mapping_reverse = {0: 'benign', 1: 'malignant'}
+        
+        # Create the output directory if it doesn't exist
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+        
         # Load the image
         img = cv2.imread(os.path.join(masks_path, filename))
         
         # Create a figure
-        plt.figure(figsize=(16, 8))
+        plt.figure(figsize=(16, 12))
         
         # Plot the image
-        plt.subplot(1, 3, 1)
+        plt.subplot(2, 1, 1)
         plt.imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
         plt.title(f'Original Image - {filename}')
         plt.axis('off')
         
         # Plot the features
-        plt.subplot(1, 3, 2)
+        plt.subplot(2, 2, 3)
         features.plot(kind='barh', legend=False)
         plt.title('Normalized Extracted Features')
         plt.xlabel('Feature Value')
         
         # Plot the contributions for each class
-        plt.subplot(1, 3, 3)
+        plt.subplot(2, 2, 4)
         rf_contrib_summary_class0 = rf_contributions[:, 0]
         rf_contrib_summary_class1 = rf_contributions[:, 1]
         
-        pd.Series(rf_contrib_summary_class0, index=features.index).plot(kind='barh', color='blue', alpha=0.6, label='Class 0')
-        pd.Series(rf_contrib_summary_class1, index=features.index).plot(kind='barh', color='red', alpha=0.6, label='Class 1')
+        pd.Series(rf_contrib_summary_class0, index=features.index).plot(kind='barh', color='blue', alpha=0.6, label=label_mapping_reverse[0])
+        pd.Series(rf_contrib_summary_class1, index=features.index).plot(kind='barh', color='red', alpha=0.6, label=label_mapping_reverse[1])
         
         plt.title('Random Forest Contributions')
         plt.xlabel('Contribution Value')
@@ -347,13 +353,13 @@ if 'Label' in df.columns:
         
         # Save the figure
         plt.tight_layout()
-        plt.savefig(f'{filename}_features_predictions.png')
+        plt.savefig(os.path.join(output_dir, f'{filename}_features_predictions.png'))
         plt.close()
 
         # Print the model predictions
         print(f"Predictions for {filename}:")
-        print(f"  XGBoost: {'benign' if xgb_pred == 0 else 'malignant'}")
-        print(f"  RandomForest: {'benign' if rf_pred == 0 else 'malignant'}")
+        print(f"  XGBoost: {label_mapping_reverse[xgb_pred]}")
+        print(f"  RandomForest: {label_mapping_reverse[rf_pred]}")
 
     # Prepare the scaler using the training set features
     all_filenames = correct_classified_rf + misclassified_rf + correct_classified_xgb + misclassified_xgb
@@ -361,7 +367,7 @@ if 'Label' in df.columns:
     scaler = StandardScaler().fit(train_features)
 
     # Analyze 3 correctly classified and 3 misclassified examples for RandomForest and XGBoost
-    def analyze_examples(classified_list, model, model_name):
+    def analyze_examples(classified_list, model, model_name, output_dir):
         for i in range(min(3, len(classified_list))):
             filename = classified_list[i]
             features = extract_features_for_list([filename], masks_path, scaler)
@@ -374,13 +380,23 @@ if 'Label' in df.columns:
                 features.iloc[0],
                 xgb_pred[0],
                 rf_pred[0],
-                rf_contributions[0]
+                rf_contributions[0],
+                output_dir
             )
 
-    analyze_examples(correct_classified_rf, rf_model, "RandomForest Correctly Classified")
-    analyze_examples(misclassified_rf, rf_model, "RandomForest Misclassified")
-    analyze_examples(correct_classified_xgb, xgb_model, "XGBoost Correctly Classified")
-    analyze_examples(misclassified_xgb, xgb_model, "XGBoost Misclassified")
+    # Define output directories for each category
+    output_dirs = {
+        "RandomForest Correctly Classified": "output/correct_classified_rf",
+        "RandomForest Misclassified": "output/misclassified_rf",
+        "XGBoost Correctly Classified": "output/correct_classified_xgb",
+        "XGBoost Misclassified": "output/misclassified_xgb"
+    }
+
+    # Analyze and save images to respective directories
+    analyze_examples(correct_classified_rf, rf_model, "RandomForest Correctly Classified", output_dirs["RandomForest Correctly Classified"])
+    analyze_examples(misclassified_rf, rf_model, "RandomForest Misclassified", output_dirs["RandomForest Misclassified"])
+    analyze_examples(correct_classified_xgb, xgb_model, "XGBoost Correctly Classified", output_dirs["XGBoost Correctly Classified"])
+    analyze_examples(misclassified_xgb, xgb_model, "XGBoost Misclassified", output_dirs["XGBoost Misclassified"])
 
 else:
     print("Error: 'Label' column not found in the DataFrame.")
