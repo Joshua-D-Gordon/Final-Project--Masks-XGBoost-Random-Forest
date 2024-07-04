@@ -117,7 +117,8 @@ def extract_features_from_dataset(dataset_name, masks_path, meta_path):
                         labels.append(label)
 
     return features_list, filenames, labels
-
+    
+    
 # Extract features and labels from each dataset
 for dataset in datasets:
     features_list, filenames, labels = extract_features_from_dataset(dataset, masks_path, meta_path)
