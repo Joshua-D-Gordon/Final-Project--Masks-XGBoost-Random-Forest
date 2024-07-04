@@ -7,11 +7,9 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 from xgboost import XGBClassifier
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score, classification_report
+from sklearn.metrics import accuracy_score, classification_report, roc_curve, auc, confusion_matrix, roc_auc_score
 import matplotlib.pyplot as plt
-
-#TODO confusion matrix on all features, make sure numbers match = 2971.
-#AUC 
+import seaborn as sns
 
 # Define paths
 masks_path = 'masks'
@@ -150,6 +148,25 @@ df = pd.DataFrame(dataset)
 print("\n")
 print(df.head())
 
+# Dataset statistics
+class_counts = df['Label'].value_counts()
+class_percentages = df['Label'].value_counts(normalize=True) * 100
+class_balance = pd.DataFrame({'Count': class_counts, 'Percentage': class_percentages})
+print("Class balance:\n", class_balance)
+
+plt.figure(figsize=(12, 8))
+sns.countplot(x='Label', data=df)
+plt.title('Class Balance')
+plt.xlabel('Class')
+plt.ylabel('Count')
+for p in plt.gca().patches:
+    plt.gca().annotate(f'{p.get_height()} ({p.get_height()/len(df)*100:.2f}%)', 
+                       (p.get_x() + p.get_width() / 2., p.get_height()), 
+                       ha='center', va='baseline', fontsize=12, color='black', xytext=(0, 5), 
+                       textcoords='offset points')
+plt.savefig('class_balance.png')
+plt.close()
+
 # Encode labels as numerical values
 label_mapping = {'benign': 0, 'malignant': 1}
 df['Label'] = df['Label'].map(label_mapping)
@@ -169,6 +186,45 @@ if 'Label' in df.columns:
     y_pred_xgb = xgb_model.predict(X_test)
     print("XGBoost Accuracy:", accuracy_score(y_test, y_pred_xgb))
     print("XGBoost Classification Report:\n", classification_report(y_test, y_pred_xgb))
+    print("XGBoost AUC Score:", roc_auc_score(y_test, y_pred_xgb))
+
+    # Confusion Matrix for XGBoost
+    cm_xgb = confusion_matrix(y_test, y_pred_xgb)
+    plt.figure(figsize=(6, 6))
+    sns.heatmap(cm_xgb, annot=True, fmt='d', cmap='Blues', xticklabels=['benign', 'malignant'], yticklabels=['benign', 'malignant'])
+    plt.title('XGBoost Confusion Matrix')
+    plt.xlabel('Predicted')
+    plt.ylabel('Actual')
+    plt.savefig('xgb_confusion_matrix.png')
+    plt.close()
+
+    # Feature importance from XGBoost
+    importances_xgb = xgb_model.feature_importances_
+    indices_xgb = np.argsort(importances_xgb)[::-1]
+
+    # Plot feature importance for XGBoost
+    plt.figure(figsize=(12, 8))
+    plt.title("XGBoost Feature Importance")
+    plt.bar(range(X.shape[1]), importances_xgb[indices_xgb], align="center")
+    plt.xticks(range(X.shape[1]), [X.columns[i] for i in indices_xgb], rotation=90)
+    plt.xlabel("Feature")
+    plt.ylabel("Importance")
+    plt.savefig('xgboost_feature_importance.png')
+    plt.close()
+
+    # ROC Curve for XGBoost
+    fpr_xgb, tpr_xgb, _ = roc_curve(y_test, y_pred_xgb)
+    plt.figure()
+    plt.plot(fpr_xgb, tpr_xgb, color='blue', lw=2, label='XGBoost ROC curve (area = %0.2f)' % auc(fpr_xgb, tpr_xgb))
+    plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.05])
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title('XGBoost ROC Curve')
+    plt.legend(loc="lower right")
+    plt.savefig('xgb_roc_curve.png')
+    plt.close()
 
     # Train RandomForest model
     rf_model = RandomForestClassifier()
@@ -178,5 +234,52 @@ if 'Label' in df.columns:
     y_pred_rf = rf_model.predict(X_test)
     print("RandomForest Accuracy:", accuracy_score(y_test, y_pred_rf))
     print("RandomForest Classification Report:\n", classification_report(y_test, y_pred_rf))
+    print("RandomForest AUC Score:", roc_auc_score(y_test, y_pred_rf))
+
+    # Confusion Matrix for RandomForest
+    cm_rf = confusion_matrix(y_test, y_pred_rf)
+    plt.figure(figsize=(6, 6))
+    sns.heatmap(cm_rf, annot=True, fmt='d', cmap='Blues', xticklabels=['benign', 'malignant'], yticklabels=['benign', 'malignant'])
+    plt.title('RandomForest Confusion Matrix')
+    plt.xlabel('Predicted')
+    plt.ylabel('Actual')
+    plt.savefig('rf_confusion_matrix.png')
+    plt.close()
+
+    # ROC Curve for RandomForest
+    fpr_rf, tpr_rf, _ = roc_curve(y_test, y_pred_rf)
+    plt.figure()
+    plt.plot(fpr_rf, tpr_rf, color='green', lw=2, label='RandomForest ROC curve (area = %0.2f)' % auc(fpr_rf, tpr_rf))
+    plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
+    plt.xlim([0, 1])
+    plt.ylim([0, 1.05])
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title('RandomForest ROC Curve')
+    plt.legend(loc="lower right")
+    plt.savefig('rf_roc_curve.png')
+    plt.close()
+
+    # Feature importance from RandomForest
+    importances_rf = rf_model.feature_importances_
+    indices_rf = np.argsort(importances_rf)[::-1]
+
+    # Plot feature importance for RandomForest
+    plt.figure(figsize=(12, 8))
+    plt.title("RandomForest Feature Importance")
+    plt.bar(range(X.shape[1]), importances_rf[indices_rf], align="center")
+    plt.xticks(range(X.shape[1]), [X.columns[i] for i in indices_rf], rotation=90)
+    plt.xlabel("Feature")
+    plt.ylabel("Importance")
+    plt.savefig('randomforest_feature_importance.png')
+    plt.close()
+
+    # Correlation heatmap
+    plt.figure(figsize=(12, 8))
+    sns.heatmap(df.corr(), annot=True, fmt='.2f', cmap='coolwarm')
+    plt.title('Correlation Heatmap')
+    plt.savefig('correlation_heatmap.png')
+    plt.close()
+
 else:
     print("Error: 'Label' column not found in the DataFrame.")
